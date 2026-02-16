@@ -6,6 +6,8 @@ import connectDB from './Database/connection.js';
 import authRouter from './Routes/authRoutes.js';
 import leaveRouter from './Routes/leaveRoutes.js';
 import balanceRouter from './Routes/balanceRoutes.js';
+import attendanceRouter from './Routes/attendanceRoutes.js';
+import profileRouter from './Routes/profileRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -33,6 +35,9 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/leaves", leaveRouter);
 app.use("/api/balance", balanceRouter);
+app.use("/api/attendance", attendanceRouter);
+app.use("/api/profile", profileRouter);
+app.use("/uploads", express.static("uploads"));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

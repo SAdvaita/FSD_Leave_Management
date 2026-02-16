@@ -35,7 +35,8 @@ export const registerUser = async (req, res) => {
                 name: newUser.name,
                 email: newUser.email,
                 role: newUser.role,
-                leaveBalance: newUser.leaveBalance
+                leaveBalance: newUser.leaveBalance,
+                profilePicture: newUser.profilePicture
             }
         });
     } catch (error) {
@@ -75,7 +76,8 @@ export const loginUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                leaveBalance: user.leaveBalance
+                leaveBalance: user.leaveBalance,
+                profilePicture: user.profilePicture
             }
         });
     } catch (error) {
@@ -108,7 +110,8 @@ export const getProfile = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                leaveBalance: user.leaveBalance
+                leaveBalance: user.leaveBalance,
+                profilePicture: user.profilePicture
             }
         });
     } catch (error) {

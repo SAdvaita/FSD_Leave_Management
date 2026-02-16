@@ -41,7 +41,7 @@ const ManagerDashboard = () => {
         try {
             const response = await api.put(`/leaves/${leaveId}/approve`);
             setMessage({ type: 'success', text: response.data.message });
-            fetchData(); // Refresh data
+            fetchData();
         } catch (error) {
             setMessage({
                 type: 'error',
@@ -55,7 +55,7 @@ const ManagerDashboard = () => {
         try {
             const response = await api.put(`/leaves/${leaveId}/reject`);
             setMessage({ type: 'success', text: response.data.message });
-            fetchData(); // Refresh data
+            fetchData();
         } catch (error) {
             setMessage({
                 type: 'error',
@@ -70,7 +70,11 @@ const ManagerDashboard = () => {
     };
 
     if (loading) {
-        return <div className="spinner"></div>;
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white' }}>
+                <div className="animate-pulse">Loading Manager Portal...</div>
+            </div>
+        );
     }
 
     const pendingCount = leaves.filter(l => l.status === 'pending').length;
@@ -78,140 +82,133 @@ const ManagerDashboard = () => {
     const rejectedCount = leaves.filter(l => l.status === 'rejected').length;
 
     return (
-        <div>
+        <div className="animate-fade-in">
             <nav className="navbar">
-                <div className="navbar-brand">Leave Management</div>
-                <div className="navbar-user">
-                    <span style={{ fontWeight: 500 }}>{user?.name}</span>
-                    <span className="badge badge-manager">{user?.role}</span>
-                    <button onClick={handleLogout} className="btn btn-secondary btn-sm">
-                        Logout
+                <div className="navbar-brand">LeaveManager Admin</div>
+                <div className="navbar-user" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ color: 'white', fontWeight: '600' }}>{user?.name}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>ADMIN</div>
+                    </div>
+                    <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                        LOGOUT
                     </button>
                 </div>
             </nav>
 
             <div className="container">
-                <h2>Manager Dashboard</h2>
+                <h2 style={{ marginBottom: '2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
+                    Dashboard Overview
+                </h2>
 
                 {/* Stats */}
-                <div className="grid grid-3 mb-4">
-                    <div className="stat-card" style={{ borderLeftColor: 'var(--warning)' }}>
-                        <div className="stat-value" style={{ color: 'var(--warning)' }}>
-                            {pendingCount}
-                        </div>
-                        <div className="stat-label">Pending Requests</div>
+                <div className="grid grid-3" style={{ marginBottom: '2rem' }}>
+                    <div className="glass-card" style={{ borderLeft: '4px solid var(--warning)' }}>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--warning)' }}>{pendingCount}</div>
+                        <div style={{ color: 'var(--text-muted)' }}>Pending Requests</div>
                     </div>
-                    <div className="stat-card" style={{ borderLeftColor: 'var(--success)' }}>
-                        <div className="stat-value" style={{ color: 'var(--success)' }}>
-                            {approvedCount}
-                        </div>
-                        <div className="stat-label">Approved</div>
+                    <div className="glass-card" style={{ borderLeft: '4px solid var(--success)' }}>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{approvedCount}</div>
+                        <div style={{ color: 'var(--text-muted)' }}>Approved Requests</div>
                     </div>
-                    <div className="stat-card" style={{ borderLeftColor: 'var(--danger)' }}>
-                        <div className="stat-value" style={{ color: 'var(--danger)' }}>
-                            {rejectedCount}
-                        </div>
-                        <div className="stat-label">Rejected</div>
+                    <div className="glass-card" style={{ borderLeft: '4px solid var(--error)' }}>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--error)' }}>{rejectedCount}</div>
+                        <div style={{ color: 'var(--text-muted)' }}>Rejected Requests</div>
                     </div>
                 </div>
 
                 {message.text && (
-                    <div className={`alert alert-${message.type === 'success' ? 'success' : 'error'}`}>
+                    <div style={{
+                        padding: '1rem',
+                        marginBottom: '1rem',
+                        background: message.type === 'success' ? 'rgba(0, 176, 155, 0.2)' : 'rgba(239, 71, 58, 0.2)',
+                        border: `1px solid ${message.type === 'success' ? 'var(--success)' : 'var(--error)'}`,
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'white'
+                    }}>
                         {message.text}
                     </div>
                 )}
 
                 {/* Leave Requests */}
-                <div className="glass-container mb-4">
-                    <div className="flex-between mb-3">
+                <div className="glass-panel" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <h3>Leave Requests</h3>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setFilter('all')}
-                                className={`btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-outline'}`}
-                            >
-                                All
-                            </button>
-                            <button
-                                onClick={() => setFilter('pending')}
-                                className={`btn btn-sm ${filter === 'pending' ? 'btn-primary' : 'btn-outline'}`}
-                            >
-                                Pending
-                            </button>
-                            <button
-                                onClick={() => setFilter('approved')}
-                                className={`btn btn-sm ${filter === 'approved' ? 'btn-primary' : 'btn-outline'}`}
-                            >
-                                Approved
-                            </button>
-                            <button
-                                onClick={() => setFilter('rejected')}
-                                className={`btn btn-sm ${filter === 'rejected' ? 'btn-primary' : 'btn-outline'}`}
-                            >
-                                Rejected
-                            </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {['all', 'pending', 'approved', 'rejected'].map(f => (
+                                <button
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
+                                    style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', textTransform: 'capitalize' }}
+                                >
+                                    {f}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
                     {leaves.length === 0 ? (
-                        <p style={{ color: 'var(--gray)', textAlign: 'center', padding: '2rem' }}>
-                            No leave requests found
-                        </p>
+                        <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>No requests found</p>
                     ) : (
-                        <div className="table-container">
-                            <table>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
                                 <thead>
-                                    <tr>
-                                        <th>Employee</th>
-                                        <th>Start Date</th>
-                                        <th>End Date</th>
-                                        <th>Days</th>
-                                        <th>Reason</th>
-                                        <th>Balance</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
+                                    <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
+                                        <th style={{ padding: '1rem' }}>Employee</th>
+                                        <th style={{ padding: '1rem' }}>Dates</th>
+                                        <th style={{ padding: '1rem' }}>Reason</th>
+                                        <th style={{ padding: '1rem' }}>Status</th>
+                                        <th style={{ padding: '1rem' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {leaves.map((leave) => (
-                                        <tr key={leave._id}>
-                                            <td>
-                                                <div>
-                                                    <div style={{ fontWeight: 600 }}>{leave.employeeId?.name}</div>
-                                                    <div style={{ fontSize: '0.875rem', color: 'var(--gray)' }}>
-                                                        {leave.employeeId?.email}
-                                                    </div>
-                                                </div>
+                                        <tr key={leave._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <td style={{ padding: '1rem' }}>
+                                                <div style={{ fontWeight: '600' }}>{leave.employeeId?.name}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{leave.employeeId?.email}</div>
                                             </td>
-                                            <td>{new Date(leave.startDate).toLocaleDateString()}</td>
-                                            <td>{new Date(leave.endDate).toLocaleDateString()}</td>
-                                            <td>{leave.numberOfDays}</td>
-                                            <td>{leave.reason}</td>
-                                            <td>{leave.employeeId?.leaveBalance || 0} days</td>
-                                            <td>
-                                                <span className={`badge badge-${leave.status}`}>
-                                                    {leave.status}
+                                            <td style={{ padding: '1rem' }}>
+                                                {new Date(leave.startDate).toLocaleDateString()} - <br />
+                                                {new Date(leave.endDate).toLocaleDateString()}
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--secondary)' }}>({leave.numberOfDays} days)</div>
+                                            </td>
+                                            <td style={{ padding: '1rem', maxWidth: '300px' }}>{leave.reason}</td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <span style={{
+                                                    padding: '0.25rem 0.5rem',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 'bold',
+                                                    color: leave.status === 'approved' ? 'var(--success)' :
+                                                        leave.status === 'rejected' ? 'var(--error)' : 'var(--warning)',
+                                                    background: 'rgba(255,255,255,0.05)'
+                                                }}>
+                                                    {leave.status.toUpperCase()}
                                                 </span>
                                             </td>
-                                            <td>
+                                            <td style={{ padding: '1rem' }}>
                                                 {leave.status === 'pending' ? (
-                                                    <div className="flex gap-1">
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                         <button
                                                             onClick={() => handleApprove(leave._id)}
-                                                            className="btn btn-success btn-sm"
+                                                            className="btn"
+                                                            style={{ background: 'var(--success)', border: 'none', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}
                                                         >
-                                                            Approve
+                                                            ✓
                                                         </button>
                                                         <button
                                                             onClick={() => handleReject(leave._id)}
-                                                            className="btn btn-danger btn-sm"
+                                                            className="btn"
+                                                            style={{ background: 'var(--error)', border: 'none', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}
                                                         >
-                                                            Reject
+                                                            ✗
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <span style={{ color: 'var(--gray)', fontSize: '0.875rem' }}>
-                                                        {leave.reviewedBy?.name}
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                                        Reviewed by {leave.reviewedBy?.name || 'Admin'}
                                                     </span>
                                                 )}
                                             </td>
@@ -224,33 +221,21 @@ const ManagerDashboard = () => {
                 </div>
 
                 {/* Employee Balances */}
-                <div className="glass-container">
-                    <h3>Employee Leave Balances</h3>
-
-                    {balances.length === 0 ? (
-                        <p style={{ color: 'var(--gray)', textAlign: 'center', padding: '2rem' }}>
-                            No employees found
-                        </p>
-                    ) : (
-                        <div className="grid grid-3">
-                            {balances.map((employee) => (
-                                <div key={employee._id} className="card">
-                                    <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
-                                        {employee.name}
-                                    </div>
-                                    <div style={{ fontSize: '0.875rem', color: 'var(--gray)', marginBottom: '0.5rem' }}>
-                                        {employee.email}
-                                    </div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>
-                                        {employee.leaveBalance} days
-                                    </div>
-                                    <div style={{ fontSize: '0.875rem', color: 'var(--gray)' }}>
-                                        Available leave
-                                    </div>
+                <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <h3>Employee Balances</h3>
+                    <div className="grid grid-3" style={{ marginTop: '1rem' }}>
+                        {balances.map((employee) => (
+                            <div key={employee._id} className="glass-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div>
+                                    <div style={{ fontWeight: 'bold' }}>{employee.name}</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{employee.email}</div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+                                    {employee.leaveBalance}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

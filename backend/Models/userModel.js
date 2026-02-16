@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
     leaveBalance: {
         type: Number,
         default: 20
+    },
+    profilePicture: {
+        type: String,
+        default: ''
     }
 }, { timestamps: true });
 

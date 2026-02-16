@@ -53,6 +53,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        refreshUser: checkAuth,
         isAuthenticated: !!user,
         isEmployee: user?.role === 'employee',
         isManager: user?.role === 'manager',
