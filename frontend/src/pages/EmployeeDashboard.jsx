@@ -1,23 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+
 const EmployeeDashboard = () => {
-    const { user, logout, refreshUser } = useAuth();
+    const { user, logout, setUser } = useAuth();
     const navigate = useNavigate();
+    const fileInputRef = useRef(null);
     const [leaves, setLeaves] = useState([]);
     const [balance, setBalance] = useState(null);
-    const [attendance, setAttendance] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('overview');
     const [formData, setFormData] = useState({
         startDate: '',
         endDate: '',
         reason: ''
     });
     const [message, setMessage] = useState({ type: '', text: '' });
-    const [activeTab, setActiveTab] = useState('overview');
-    const [uploading, setUploading] = useState(false);
+
+    // Attendance state
+    const [attendanceStatus, setAttendanceStatus] = useState({
+        clockedIn: false,
+        clockedOut: false,
+        attendance: null
+    });
+    const [attendanceHistory, setAttendanceHistory] = useState([]);
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
+    const [attendanceMessage, setAttendanceMessage] = useState({ type: '', text: '' });
+
+    // Profile picture state
+    const [uploadingPic, setUploadingPic] = useState(false);
+    const [picMessage, setPicMessage] = useState({ type: '', text: '' });
 
     useEffect(() => {
         if (!user || user.role !== 'employee') {
@@ -25,22 +40,101 @@ const EmployeeDashboard = () => {
             return;
         }
         fetchData();
+        fetchAttendanceStatus();
+        fetchAttendanceHistory();
     }, [user, navigate]);
 
     const fetchData = async () => {
         try {
-            const [leavesRes, balanceRes, attendanceRes] = await Promise.all([
+            const [leavesRes, balanceRes] = await Promise.all([
                 api.get('/leaves/my-leaves'),
-                api.get('/balance/my-balance'),
-                api.get('/attendance/status')
+                api.get('/balance/my-balance')
             ]);
             setLeaves(leavesRes.data.leaves);
             setBalance(balanceRes.data.balance);
-            setAttendance(attendanceRes.data);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchAttendanceStatus = async () => {
+        try {
+            const res = await api.get('/attendance/status');
+            setAttendanceStatus(res.data);
+        } catch (error) {
+            console.error('Error fetching attendance status:', error);
+        }
+    };
+
+    const fetchAttendanceHistory = async () => {
+        try {
+            const res = await api.get('/attendance/my-history');
+            setAttendanceHistory(res.data.history);
+        } catch (error) {
+            console.error('Error fetching attendance history:', error);
+        }
+    };
+
+    const handleClockIn = async () => {
+        setAttendanceLoading(true);
+        setAttendanceMessage({ type: '', text: '' });
+        try {
+            const res = await api.post('/attendance/clock-in');
+            setAttendanceMessage({ type: 'success', text: res.data.message });
+            fetchAttendanceStatus();
+            fetchAttendanceHistory();
+        } catch (error) {
+            setAttendanceMessage({
+                type: 'error',
+                text: error.response?.data?.message || 'Failed to clock in'
+            });
+        } finally {
+            setAttendanceLoading(false);
+        }
+    };
+
+    const handleClockOut = async () => {
+        setAttendanceLoading(true);
+        setAttendanceMessage({ type: '', text: '' });
+        try {
+            const res = await api.post('/attendance/clock-out');
+            setAttendanceMessage({ type: 'success', text: res.data.message });
+            fetchAttendanceStatus();
+            fetchAttendanceHistory();
+        } catch (error) {
+            setAttendanceMessage({
+                type: 'error',
+                text: error.response?.data?.message || 'Failed to clock out'
+            });
+        } finally {
+            setAttendanceLoading(false);
+        }
+    };
+
+    const handleProfilePicUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formDataUpload = new FormData();
+        formDataUpload.append('image', file);
+
+        setUploadingPic(true);
+        setPicMessage({ type: '', text: '' });
+        try {
+            const res = await api.post('/profile/upload', formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setPicMessage({ type: 'success', text: res.data.message });
+            setUser(prev => ({ ...prev, profilePicture: res.data.user.profilePicture }));
+        } catch (error) {
+            setPicMessage({
+                type: 'error',
+                text: error.response?.data?.message || 'Failed to upload profile picture'
+            });
+        } finally {
+            setUploadingPic(false);
         }
     };
 
@@ -60,7 +154,6 @@ const EmployeeDashboard = () => {
             setMessage({ type: 'success', text: response.data.message });
             setFormData({ startDate: '', endDate: '', reason: '' });
             fetchData();
-            setTimeout(() => setMessage({ type: '', text: '' }), 5000);
         } catch (error) {
             setMessage({
                 type: 'error',
@@ -74,288 +167,418 @@ const EmployeeDashboard = () => {
         navigate('/login');
     };
 
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // Validate file size (1MB limit)
-        if (file.size > 1000000) {
-            setMessage({ type: 'error', text: 'Image too large! Max size: 1MB' });
-            setTimeout(() => setMessage({ type: '', text: '' }), 5000);
-            return;
-        }
-
-        // Validate file type
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-        if (!validTypes.includes(file.type)) {
-            setMessage({ type: 'error', text: 'Invalid file type! Use JPG, PNG, or GIF' });
-            setTimeout(() => setMessage({ type: '', text: '' }), 5000);
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('image', file);
-
-        setUploading(true);
-        setMessage({ type: '', text: '' });
-
-        try {
-            await api.post('/profile/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            setMessage({ type: 'success', text: 'Profile picture updated!' });
-            await refreshUser();
-            setTimeout(() => setMessage({ type: '', text: '' }), 5000);
-        } catch (error) {
-            console.error('Upload error:', error);
-            const errorMsg = error.response?.data?.message || 'Failed to upload image';
-            setMessage({ type: 'error', text: errorMsg });
-            setTimeout(() => setMessage({ type: '', text: '' }), 5000);
-        } finally {
-            setUploading(false);
-            // Reset file input
-            e.target.value = '';
-        }
+    const formatTime = (dateStr) => {
+        if (!dateStr) return '-';
+        return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    const handleClockIn = async () => {
-        try {
-            const endpoint = attendance?.clockedIn ? '/attendance/clock-out' : '/attendance/clock-in';
-            const response = await api.post(endpoint);
-            setMessage({ type: 'success', text: response.data.message });
-            fetchData();
-        } catch (error) {
-            setMessage({ type: 'error', text: error.response?.data?.message || 'Action failed' });
+    const formatDate = (dateStr) => {
+        return new Date(dateStr).toLocaleDateString();
+    };
+
+    const getProfilePicUrl = () => {
+        if (user?.profilePicture) {
+            return `${API_BASE}/${user.profilePicture}`;
         }
+        return null;
     };
 
     if (loading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white' }}>
-                <div className="animate-pulse">Loading Premium Experience...</div>
-            </div>
-        );
+        return <div className="spinner"></div>;
     }
 
     return (
-        <div className="animate-fade-in">
+        <div>
             <nav className="navbar">
-                <div className="navbar-brand">LeaveManager Pro</div>
-                <div className="navbar-user" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: 'white', fontWeight: '600' }}>{user?.name}</div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{user?.email}</div>
+                <div className="navbar-brand">Leave Management</div>
+                <div className="navbar-user">
+                    <div className="profile-avatar-small" onClick={() => setActiveTab('profile')}>
+                        {getProfilePicUrl() ? (
+                            <img src={getProfilePicUrl()} alt="Profile" />
+                        ) : (
+                            <span>{user?.name?.charAt(0)?.toUpperCase()}</span>
+                        )}
                     </div>
-                    <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
-                        LOGOUT
+                    <span style={{ fontWeight: 500 }}>{user?.name}</span>
+                    <span className="badge badge-employee">{user?.role}</span>
+                    <button onClick={handleLogout} className="btn btn-secondary btn-sm">
+                        Logout
                     </button>
                 </div>
             </nav>
 
             <div className="container">
-                {/* Hero Section */}
-                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                    <div style={{ position: 'relative' }}>
-                        <div style={{
-                            width: '100px',
-                            height: '100px',
-                            borderRadius: '50%',
-                            overflow: 'hidden',
-                            border: '3px solid var(--primary)',
-                            background: 'rgba(255,255,255,0.1)'
-                        }}>
-                            {(() => {
-                                console.log('🔍 DEBUG - User object:', user);
-                                console.log('🔍 DEBUG - Profile picture value:', user?.profilePicture);
-                                console.log('🔍 DEBUG - Image URL:', user?.profilePicture ? `http://localhost:8080/${user.profilePicture}?t=${new Date().getTime()}` : 'NO IMAGE');
-                                return user?.profilePicture ? (
-                                    <img
-                                        src={`http://localhost:8080/${user.profilePicture}?t=${new Date().getTime()}`}
-                                        alt="Profile"
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        onError={(e) => {
-                                            console.error('❌ Image failed to load!', e.target.src);
-                                            console.error('❌ Error event:', e);
-                                        }}
-                                        onLoad={() => console.log('✅ Image loaded successfully!')}
-                                    />
-                                ) : (
-                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: 'var(--primary)' }}>
-                                        {user?.name.charAt(0)}
+                <h2>Employee Dashboard</h2>
+
+                {/* Tab Navigation */}
+                <div className="tab-nav mb-4">
+                    <button
+                        className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('overview')}
+                    >
+                        📊 Overview
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('attendance')}
+                    >
+                        🕐 Attendance
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'leave' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('leave')}
+                    >
+                        📝 Apply Leave
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('history')}
+                    >
+                        📋 Leave History
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('profile')}
+                    >
+                        👤 Profile
+                    </button>
+                </div>
+
+                {/* ===== OVERVIEW TAB ===== */}
+                {activeTab === 'overview' && (
+                    <>
+                        <div className="grid grid-3 mb-4">
+                            <div className="stat-card">
+                                <div className="stat-value">{balance?.leaveBalance || 0}</div>
+                                <div className="stat-label">Available Leave Days</div>
+                            </div>
+                            <div className="stat-card" style={{ borderLeftColor: 'var(--secondary)' }}>
+                                <div className="stat-value" style={{ color: 'var(--secondary)' }}>
+                                    {leaves.length}
+                                </div>
+                                <div className="stat-label">Total Leave Requests</div>
+                            </div>
+                            <div className="stat-card" style={{ borderLeftColor: 'var(--success)' }}>
+                                <div className="stat-value" style={{ color: 'var(--success)' }}>
+                                    {attendanceStatus.clockedIn ? (attendanceStatus.clockedOut ? '✅' : '🟢') : '⭕'}
+                                </div>
+                                <div className="stat-label">
+                                    {attendanceStatus.clockedIn
+                                        ? (attendanceStatus.clockedOut ? 'Shift Complete' : 'Currently Working')
+                                        : 'Not Clocked In'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Quick Clock In/Out */}
+                        <div className="glass-container mb-4">
+                            <h3>⏰ Quick Clock In / Out</h3>
+                            {attendanceMessage.text && (
+                                <div className={`alert alert-${attendanceMessage.type === 'success' ? 'success' : 'error'}`}>
+                                    {attendanceMessage.text}
+                                </div>
+                            )}
+                            <div className="attendance-actions">
+                                {!attendanceStatus.clockedIn && (
+                                    <button
+                                        onClick={handleClockIn}
+                                        className="btn btn-success btn-clock"
+                                        disabled={attendanceLoading}
+                                    >
+                                        🟢 Clock In
+                                    </button>
+                                )}
+                                {attendanceStatus.clockedIn && !attendanceStatus.clockedOut && (
+                                    <>
+                                        <div className="clock-info">
+                                            <span className="clock-pulse"></span>
+                                            <span>Clocked in at {formatTime(attendanceStatus.attendance?.clockIn)}</span>
+                                        </div>
+                                        <button
+                                            onClick={handleClockOut}
+                                            className="btn btn-danger btn-clock"
+                                            disabled={attendanceLoading}
+                                        >
+                                            🔴 Clock Out
+                                        </button>
+                                    </>
+                                )}
+                                {attendanceStatus.clockedOut && (
+                                    <div className="clock-complete">
+                                        <p>✅ Shift complete for today!</p>
+                                        <p className="clock-detail">
+                                            In: {formatTime(attendanceStatus.attendance?.clockIn)} |
+                                            Out: {formatTime(attendanceStatus.attendance?.clockOut)} |
+                                            Hours: {attendanceStatus.attendance?.totalHours}h
+                                        </p>
                                     </div>
-                                );
-                            })()}
+                                )}
+                            </div>
                         </div>
-                        <label htmlFor="file-upload" style={{
-                            position: 'absolute',
-                            bottom: '0',
-                            right: '0',
-                            background: uploading ? 'var(--text-muted)' : 'var(--secondary)',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: uploading ? 'not-allowed' : 'pointer',
-                            fontSize: '1.2rem',
-                            transition: 'all 0.3s ease',
-                            opacity: uploading ? 0.6 : 1
-                        }}>
-                            {uploading ? '⏳' : '+'}
-                        </label>
-                        <input
-                            id="file-upload"
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={handleImageUpload}
-                            disabled={uploading}
-                        />
-                    </div>
-                    <div>
-                        <h1 style={{ fontSize: '2.5rem' }}>
-                            Welcome back, <span className="gradient-text">{user?.name.split(' ')[0]}</span>
-                        </h1>
-                        <p style={{ color: 'var(--text-muted)' }}>Here is what's happening today.</p>
-                    </div>
-                </div>
+                    </>
+                )}
 
-                {/* Stats Grid */}
-                <div className="grid grid-3" style={{ marginBottom: '3rem' }}>
-                    <div className="glass-card">
-                        <div style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Available Balance</div>
-                        <div style={{ fontSize: '3rem', fontWeight: 'bold', color: 'var(--success)' }}>
-                            {balance?.leaveBalance || 0}
+                {/* ===== ATTENDANCE TAB ===== */}
+                {activeTab === 'attendance' && (
+                    <>
+                        <div className="glass-container mb-4">
+                            <h3>🕐 Today's Attendance</h3>
+                            {attendanceMessage.text && (
+                                <div className={`alert alert-${attendanceMessage.type === 'success' ? 'success' : 'error'}`}>
+                                    {attendanceMessage.text}
+                                </div>
+                            )}
+                            <div className="attendance-card-large">
+                                <div className="attendance-status-icon">
+                                    {attendanceStatus.clockedIn
+                                        ? (attendanceStatus.clockedOut ? '✅' : '🟢')
+                                        : '⭕'}
+                                </div>
+                                <div className="attendance-status-text">
+                                    {attendanceStatus.clockedIn
+                                        ? (attendanceStatus.clockedOut ? 'Shift Complete' : 'Currently Working')
+                                        : 'Not Clocked In Yet'}
+                                </div>
+
+                                {attendanceStatus.attendance && (
+                                    <div className="attendance-detail-grid">
+                                        <div className="detail-item">
+                                            <span className="detail-label">Clock In</span>
+                                            <span className="detail-value">{formatTime(attendanceStatus.attendance.clockIn)}</span>
+                                        </div>
+                                        <div className="detail-item">
+                                            <span className="detail-label">Clock Out</span>
+                                            <span className="detail-value">{formatTime(attendanceStatus.attendance.clockOut)}</span>
+                                        </div>
+                                        <div className="detail-item">
+                                            <span className="detail-label">Total Hours</span>
+                                            <span className="detail-value">{attendanceStatus.attendance.totalHours || 0}h</span>
+                                        </div>
+                                        <div className="detail-item">
+                                            <span className="detail-label">Status</span>
+                                            <span className={`badge badge-${attendanceStatus.attendance.status}`}>
+                                                {attendanceStatus.attendance.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="attendance-actions mt-3">
+                                    {!attendanceStatus.clockedIn && (
+                                        <button onClick={handleClockIn} className="btn btn-success btn-clock" disabled={attendanceLoading}>
+                                            🟢 Clock In Now
+                                        </button>
+                                    )}
+                                    {attendanceStatus.clockedIn && !attendanceStatus.clockedOut && (
+                                        <button onClick={handleClockOut} className="btn btn-danger btn-clock" disabled={attendanceLoading}>
+                                            🔴 Clock Out Now
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Days Remaining</div>
-                    </div>
 
-                    <div className="glass-card">
-                        <div style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Used Leaves</div>
-                        <div style={{ fontSize: '3rem', fontWeight: 'bold', color: 'var(--warning)' }}>
-                            {balance?.usedLeaves || 0}
+                        {/* Attendance History */}
+                        <div className="glass-container">
+                            <h3>📅 Attendance History (Last 30 Days)</h3>
+                            {attendanceHistory.length === 0 ? (
+                                <p style={{ color: 'var(--gray)', textAlign: 'center', padding: '2rem' }}>
+                                    No attendance records yet
+                                </p>
+                            ) : (
+                                <div className="table-container">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Clock In</th>
+                                                <th>Clock Out</th>
+                                                <th>Total Hours</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {attendanceHistory.map((record) => (
+                                                <tr key={record._id}>
+                                                    <td>{formatDate(record.date)}</td>
+                                                    <td>{formatTime(record.clockIn)}</td>
+                                                    <td>{formatTime(record.clockOut)}</td>
+                                                    <td>{record.totalHours}h</td>
+                                                    <td>
+                                                        <span className={`badge badge-${record.status}`}>
+                                                            {record.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Days Taken</div>
-                    </div>
+                    </>
+                )}
 
-                    <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                        <div className="animate-pulse" style={{ fontSize: '1.2rem', marginBottom: '1rem', fontWeight: 'bold' }}>
-                            {attendance?.clockedOut ? "You're done for today!" :
-                                attendance?.clockedIn ? "Currently Working" : "Ready to punch in?"}
+                {/* ===== APPLY LEAVE TAB ===== */}
+                {activeTab === 'leave' && (
+                    <div className="glass-container mb-4">
+                        <h3>📝 Apply for Leave</h3>
+                        <div className="alert alert-info mb-3">
+                            You have <strong>{balance?.leaveBalance || 0}</strong> leave days remaining
                         </div>
-                        {!attendance?.clockedOut && (
-                            <button
-                                onClick={handleClockIn}
-                                className={`btn ${attendance?.clockedIn ? 'btn-secondary' : 'btn-primary'}`}
-                                style={{ width: '100%' }}
-                            >
-                                {attendance?.clockedIn ? "Clock Out" : "Clock In"}
-                            </button>
-                        )}
-                    </div>
-                </div>
 
-                {/* Main Content Area */}
-                <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-
-                    {/* Apply Leave Form */}
-                    <div className="glass-panel" style={{ padding: '2rem' }}>
-                        <h3>Request Time Off</h3>
                         {message.text && (
-                            <div style={{
-                                padding: '1rem',
-                                borderRadius: 'var(--radius-sm)',
-                                marginBottom: '1rem',
-                                background: message.type === 'success' ? 'rgba(0, 176, 155, 0.2)' : 'rgba(239, 71, 58, 0.2)',
-                                border: `1px solid ${message.type === 'success' ? 'var(--success)' : 'var(--error)'}`,
-                                color: 'white'
-                            }}>
+                            <div className={`alert alert-${message.type === 'success' ? 'success' : 'error'}`}>
                                 {message.text}
                             </div>
                         )}
+
                         <form onSubmit={handleSubmit}>
-                            <div className="grid grid-2" style={{ marginBottom: '1.5rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Start Date</label>
+                            <div className="grid grid-2">
+                                <div className="form-group">
+                                    <label htmlFor="startDate">Start Date</label>
                                     <input
                                         type="date"
+                                        id="startDate"
                                         name="startDate"
-                                        className="glass-input"
                                         value={formData.startDate}
                                         onChange={handleChange}
                                         required
                                     />
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>End Date</label>
+
+                                <div className="form-group">
+                                    <label htmlFor="endDate">End Date</label>
                                     <input
                                         type="date"
+                                        id="endDate"
                                         name="endDate"
-                                        className="glass-input"
                                         value={formData.endDate}
                                         onChange={handleChange}
                                         required
                                     />
                                 </div>
                             </div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Reason</label>
+
+                            <div className="form-group">
+                                <label htmlFor="reason">Reason</label>
                                 <textarea
+                                    id="reason"
                                     name="reason"
-                                    className="glass-input"
-                                    rows="3"
                                     value={formData.reason}
                                     onChange={handleChange}
                                     required
-                                    placeholder="I need a break because..."
+                                    placeholder="Please provide a reason for your leave request..."
                                 />
                             </div>
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                                Submit Request
+
+                            <button type="submit" className="btn btn-primary">
+                                Submit Leave Request
                             </button>
                         </form>
                     </div>
+                )}
 
-                    {/* Recent Activity */}
-                    <div className="glass-panel" style={{ padding: '2rem' }}>
-                        <h3>Recent History</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '400px', overflowY: 'auto' }}>
-                            {leaves.length === 0 ? (
-                                <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No leave history found.</p>
-                            ) : (
-                                leaves.map((leave) => (
-                                    <div key={leave._id} className="glass-card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 'bold' }}>{leave.numberOfDays} Day{leave.numberOfDays > 1 ? 's' : ''} Leave</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <span style={{
-                                                padding: '0.25rem 0.75rem',
-                                                borderRadius: '20px',
-                                                fontSize: '0.8rem',
-                                                fontWeight: '600',
-                                                background: leave.status === 'approved' ? 'rgba(0, 176, 155, 0.2)' :
-                                                    leave.status === 'rejected' ? 'rgba(239, 71, 58, 0.2)' : 'rgba(247, 183, 51, 0.2)',
-                                                color: leave.status === 'approved' ? 'var(--success)' :
-                                                    leave.status === 'rejected' ? 'var(--error)' : 'var(--warning)',
-                                                border: `1px solid ${leave.status === 'approved' ? 'var(--success)' :
-                                                    leave.status === 'rejected' ? 'var(--error)' : 'var(--warning)'}`
-                                            }}>
-                                                {leave.status.toUpperCase()}
-                                            </span>
-                                        </div>
+                {/* ===== LEAVE HISTORY TAB ===== */}
+                {activeTab === 'history' && (
+                    <div className="glass-container">
+                        <h3>📋 My Leave Requests</h3>
+
+                        {leaves.length === 0 ? (
+                            <p style={{ color: 'var(--gray)', textAlign: 'center', padding: '2rem' }}>
+                                No leave requests yet
+                            </p>
+                        ) : (
+                            <div className="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Days</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
+                                            <th>Reviewed By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {leaves.map((leave) => (
+                                            <tr key={leave._id}>
+                                                <td>{new Date(leave.startDate).toLocaleDateString()}</td>
+                                                <td>{new Date(leave.endDate).toLocaleDateString()}</td>
+                                                <td>{leave.numberOfDays}</td>
+                                                <td>{leave.reason}</td>
+                                                <td>
+                                                    <span className={`badge badge-${leave.status}`}>
+                                                        {leave.status}
+                                                    </span>
+                                                </td>
+                                                <td>{leave.reviewedBy?.name || '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ===== PROFILE TAB ===== */}
+                {activeTab === 'profile' && (
+                    <div className="glass-container">
+                        <h3>👤 My Profile</h3>
+
+                        {picMessage.text && (
+                            <div className={`alert alert-${picMessage.type === 'success' ? 'success' : 'error'}`}>
+                                {picMessage.text}
+                            </div>
+                        )}
+
+                        <div className="profile-section">
+                            <div className="profile-avatar-large" onClick={() => fileInputRef.current?.click()}>
+                                {getProfilePicUrl() ? (
+                                    <img src={getProfilePicUrl()} alt="Profile" />
+                                ) : (
+                                    <div className="avatar-placeholder">
+                                        {user?.name?.charAt(0)?.toUpperCase()}
                                     </div>
-                                ))
-                            )}
+                                )}
+                                <div className="avatar-overlay">
+                                    {uploadingPic ? '⏳' : '📷'}
+                                </div>
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/gif"
+                                onChange={handleProfilePicUpload}
+                                style={{ display: 'none' }}
+                            />
+                            <p className="profile-hint">Click the avatar to upload a new profile picture</p>
+
+                            <div className="profile-details">
+                                <div className="profile-detail-item">
+                                    <span className="profile-label">Name</span>
+                                    <span className="profile-value">{user?.name}</span>
+                                </div>
+                                <div className="profile-detail-item">
+                                    <span className="profile-label">Email</span>
+                                    <span className="profile-value">{user?.email}</span>
+                                </div>
+                                <div className="profile-detail-item">
+                                    <span className="profile-label">Role</span>
+                                    <span className="profile-value">
+                                        <span className="badge badge-employee">{user?.role}</span>
+                                    </span>
+                                </div>
+                                <div className="profile-detail-item">
+                                    <span className="profile-label">Leave Balance</span>
+                                    <span className="profile-value">{user?.leaveBalance || balance?.leaveBalance || 0} days</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

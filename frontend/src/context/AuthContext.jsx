@@ -49,11 +49,11 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         user,
+        setUser,
         loading,
         login,
         register,
         logout,
-        refreshUser: checkAuth,
         isAuthenticated: !!user,
         isEmployee: user?.role === 'employee',
         isManager: user?.role === 'manager',

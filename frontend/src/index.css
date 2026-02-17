@@ -149,6 +149,12 @@ textarea {
   transform: translateY(0);
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-primary {
   background: var(--gradient-1);
   color: white;
@@ -183,6 +189,13 @@ textarea {
 .btn-sm {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
+}
+
+.btn-clock {
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+  border-radius: 16px;
+  letter-spacing: 0.5px;
 }
 
 /* Cards */
@@ -221,7 +234,8 @@ textarea {
   color: var(--warning);
 }
 
-.badge-approved {
+.badge-approved,
+.badge-present {
   background: rgba(16, 185, 129, 0.1);
   color: var(--success);
 }
@@ -239,6 +253,16 @@ textarea {
 .badge-manager {
   background: rgba(236, 72, 153, 0.1);
   color: var(--secondary);
+}
+
+.badge-half-day {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+.badge-absent {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
 }
 
 /* Navigation */
@@ -268,6 +292,41 @@ textarea {
   gap: 1rem;
 }
 
+/* Tab Navigation */
+.tab-nav {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.5rem;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  background: transparent;
+  color: var(--gray);
+}
+
+.tab-btn:hover {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--primary);
+}
+
+.tab-btn.active {
+  background: var(--gradient-1);
+  color: white;
+  box-shadow: var(--shadow);
+}
+
 /* Grid layouts */
 .grid {
   display: grid;
@@ -280,6 +339,10 @@ textarea {
 
 .grid-3 {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.grid-4 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 /* Utilities */
@@ -416,6 +479,222 @@ tr:hover {
   100% { transform: rotate(360deg); }
 }
 
+/* ===== ATTENDANCE STYLES ===== */
+.attendance-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.attendance-card-large {
+  text-align: center;
+  padding: 2rem;
+}
+
+.attendance-status-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.attendance-status-text {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 1.5rem;
+}
+
+.attendance-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: var(--light);
+  border-radius: 16px;
+}
+
+.detail-item {
+  text-align: center;
+}
+
+.detail-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--gray);
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.detail-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.clock-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 12px;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.clock-pulse {
+  width: 10px;
+  height: 10px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.clock-complete {
+  text-align: center;
+  padding: 1rem;
+}
+
+.clock-complete p:first-child {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--success);
+  margin-bottom: 0.5rem;
+}
+
+.clock-detail {
+  color: var(--gray);
+  font-size: 0.95rem;
+}
+
+/* ===== PROFILE STYLES ===== */
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+}
+
+.profile-avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-1);
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.profile-avatar-small:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.profile-avatar-small img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-large {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  border: 4px solid var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-1);
+  position: relative;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+}
+
+.profile-avatar-large:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.15);
+}
+
+.profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.avatar-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.profile-avatar-large:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.profile-hint {
+  font-size: 0.875rem;
+  color: var(--gray);
+  margin-bottom: 2rem;
+}
+
+.profile-details {
+  width: 100%;
+  max-width: 500px;
+}
+
+.profile-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-detail-item:last-child {
+  border-bottom: none;
+}
+
+.profile-label {
+  font-weight: 500;
+  color: var(--gray);
+}
+
+.profile-value {
+  font-weight: 600;
+  color: var(--dark);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .container {
@@ -437,5 +716,40 @@ tr:hover {
   
   .glass-container {
     padding: 1.5rem;
+  }
+
+  .tab-nav {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-btn {
+    white-space: nowrap;
+    font-size: 0.85rem;
+    padding: 0.625rem 1rem;
+  }
+
+  .attendance-actions {
+    flex-direction: column;
+  }
+
+  .attendance-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .profile-avatar-large {
+    width: 110px;
+    height: 110px;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+  }
+
+  .flex-between {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
   }
 }

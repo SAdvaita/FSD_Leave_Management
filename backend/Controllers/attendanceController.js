@@ -106,3 +106,38 @@ export const getStatus = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+// Get attendance history for current user
+export const getMyHistory = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const history = await Attendance.find({ employeeId: userId })
+            .sort({ date: -1 })
+            .limit(30);
+
+        res.status(200).json({ history });
+    } catch (error) {
+        console.error("Get History Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// Get all employees attendance (for manager)
+export const getAllAttendance = async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const attendance = await Attendance.find({
+            date: {
+                $gte: today,
+                $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+            }
+        }).populate('employeeId', 'name email');
+
+        res.status(200).json({ attendance });
+    } catch (error) {
+        console.error("Get All Attendance Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

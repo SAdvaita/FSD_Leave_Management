@@ -2,6 +2,8 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './Database/connection.js';
 import authRouter from './Routes/authRoutes.js';
 import leaveRouter from './Routes/leaveRoutes.js';
@@ -11,6 +13,9 @@ import profileRouter from './Routes/profileRoutes.js';
 
 // Load environment variables
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -22,6 +27,9 @@ app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true
 }));
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.get("/", (req, res) => {
@@ -37,7 +45,6 @@ app.use("/api/leaves", leaveRouter);
 app.use("/api/balance", balanceRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/profile", profileRouter);
-app.use("/uploads", express.static("uploads"));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

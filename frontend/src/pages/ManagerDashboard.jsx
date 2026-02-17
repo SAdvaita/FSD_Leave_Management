@@ -11,6 +11,10 @@ const ManagerDashboard = () => {
     const [filter, setFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [activeTab, setActiveTab] = useState('leaves');
+
+    // Attendance state
+    const [todayAttendance, setTodayAttendance] = useState([]);
 
     useEffect(() => {
         if (!user || user.role !== 'manager') {
@@ -18,6 +22,7 @@ const ManagerDashboard = () => {
             return;
         }
         fetchData();
+        fetchTodayAttendance();
     }, [user, navigate, filter]);
 
     const fetchData = async () => {
@@ -33,6 +38,15 @@ const ManagerDashboard = () => {
             console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchTodayAttendance = async () => {
+        try {
+            const res = await api.get('/attendance/all');
+            setTodayAttendance(res.data.attendance);
+        } catch (error) {
+            console.error('Error fetching attendance:', error);
         }
     };
 
@@ -69,12 +83,13 @@ const ManagerDashboard = () => {
         navigate('/login');
     };
 
+    const formatTime = (dateStr) => {
+        if (!dateStr) return '-';
+        return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
     if (loading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white' }}>
-                <div className="animate-pulse">Loading Manager Portal...</div>
-            </div>
-        );
+        return <div className="spinner"></div>;
     }
 
     const pendingCount = leaves.filter(l => l.status === 'pending').length;
@@ -82,161 +97,261 @@ const ManagerDashboard = () => {
     const rejectedCount = leaves.filter(l => l.status === 'rejected').length;
 
     return (
-        <div className="animate-fade-in">
+        <div>
             <nav className="navbar">
-                <div className="navbar-brand">LeaveManager Admin</div>
-                <div className="navbar-user" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: 'white', fontWeight: '600' }}>{user?.name}</div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>ADMIN</div>
-                    </div>
-                    <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
-                        LOGOUT
+                <div className="navbar-brand">Leave Management</div>
+                <div className="navbar-user">
+                    <span style={{ fontWeight: 500 }}>{user?.name}</span>
+                    <span className="badge badge-manager">{user?.role}</span>
+                    <button onClick={handleLogout} className="btn btn-secondary btn-sm">
+                        Logout
                     </button>
                 </div>
             </nav>
 
             <div className="container">
-                <h2 style={{ marginBottom: '2rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
-                    Dashboard Overview
-                </h2>
+                <h2>Manager Dashboard</h2>
 
                 {/* Stats */}
-                <div className="grid grid-3" style={{ marginBottom: '2rem' }}>
-                    <div className="glass-card" style={{ borderLeft: '4px solid var(--warning)' }}>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--warning)' }}>{pendingCount}</div>
-                        <div style={{ color: 'var(--text-muted)' }}>Pending Requests</div>
+                <div className="grid grid-4 mb-4">
+                    <div className="stat-card" style={{ borderLeftColor: 'var(--warning)' }}>
+                        <div className="stat-value" style={{ color: 'var(--warning)' }}>
+                            {pendingCount}
+                        </div>
+                        <div className="stat-label">Pending Requests</div>
                     </div>
-                    <div className="glass-card" style={{ borderLeft: '4px solid var(--success)' }}>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--success)' }}>{approvedCount}</div>
-                        <div style={{ color: 'var(--text-muted)' }}>Approved Requests</div>
+                    <div className="stat-card" style={{ borderLeftColor: 'var(--success)' }}>
+                        <div className="stat-value" style={{ color: 'var(--success)' }}>
+                            {approvedCount}
+                        </div>
+                        <div className="stat-label">Approved</div>
                     </div>
-                    <div className="glass-card" style={{ borderLeft: '4px solid var(--error)' }}>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--error)' }}>{rejectedCount}</div>
-                        <div style={{ color: 'var(--text-muted)' }}>Rejected Requests</div>
+                    <div className="stat-card" style={{ borderLeftColor: 'var(--danger)' }}>
+                        <div className="stat-value" style={{ color: 'var(--danger)' }}>
+                            {rejectedCount}
+                        </div>
+                        <div className="stat-label">Rejected</div>
+                    </div>
+                    <div className="stat-card" style={{ borderLeftColor: 'var(--primary)' }}>
+                        <div className="stat-value" style={{ color: 'var(--primary)' }}>
+                            {todayAttendance.length}
+                        </div>
+                        <div className="stat-label">Present Today</div>
                     </div>
                 </div>
 
+                {/* Tab Navigation */}
+                <div className="tab-nav mb-4">
+                    <button
+                        className={`tab-btn ${activeTab === 'leaves' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('leaves')}
+                    >
+                        📝 Leave Requests
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('attendance')}
+                    >
+                        🕐 Today's Attendance
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'balances' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('balances')}
+                    >
+                        💰 Leave Balances
+                    </button>
+                </div>
+
                 {message.text && (
-                    <div style={{
-                        padding: '1rem',
-                        marginBottom: '1rem',
-                        background: message.type === 'success' ? 'rgba(0, 176, 155, 0.2)' : 'rgba(239, 71, 58, 0.2)',
-                        border: `1px solid ${message.type === 'success' ? 'var(--success)' : 'var(--error)'}`,
-                        borderRadius: 'var(--radius-sm)',
-                        color: 'white'
-                    }}>
+                    <div className={`alert alert-${message.type === 'success' ? 'success' : 'error'}`}>
                         {message.text}
                     </div>
                 )}
 
-                {/* Leave Requests */}
-                <div className="glass-panel" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <h3>Leave Requests</h3>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {['all', 'pending', 'approved', 'rejected'].map(f => (
+                {/* ===== LEAVE REQUESTS TAB ===== */}
+                {activeTab === 'leaves' && (
+                    <div className="glass-container mb-4">
+                        <div className="flex-between mb-3">
+                            <h3>Leave Requests</h3>
+                            <div className="flex gap-2">
                                 <button
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
-                                    style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', textTransform: 'capitalize' }}
+                                    onClick={() => setFilter('all')}
+                                    className={`btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-outline'}`}
                                 >
-                                    {f}
+                                    All
                                 </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {leaves.length === 0 ? (
-                        <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>No requests found</p>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                                        <th style={{ padding: '1rem' }}>Employee</th>
-                                        <th style={{ padding: '1rem' }}>Dates</th>
-                                        <th style={{ padding: '1rem' }}>Reason</th>
-                                        <th style={{ padding: '1rem' }}>Status</th>
-                                        <th style={{ padding: '1rem' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {leaves.map((leave) => (
-                                        <tr key={leave._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <td style={{ padding: '1rem' }}>
-                                                <div style={{ fontWeight: '600' }}>{leave.employeeId?.name}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{leave.employeeId?.email}</div>
-                                            </td>
-                                            <td style={{ padding: '1rem' }}>
-                                                {new Date(leave.startDate).toLocaleDateString()} - <br />
-                                                {new Date(leave.endDate).toLocaleDateString()}
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--secondary)' }}>({leave.numberOfDays} days)</div>
-                                            </td>
-                                            <td style={{ padding: '1rem', maxWidth: '300px' }}>{leave.reason}</td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <span style={{
-                                                    padding: '0.25rem 0.5rem',
-                                                    borderRadius: '4px',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: 'bold',
-                                                    color: leave.status === 'approved' ? 'var(--success)' :
-                                                        leave.status === 'rejected' ? 'var(--error)' : 'var(--warning)',
-                                                    background: 'rgba(255,255,255,0.05)'
-                                                }}>
-                                                    {leave.status.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '1rem' }}>
-                                                {leave.status === 'pending' ? (
-                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                        <button
-                                                            onClick={() => handleApprove(leave._id)}
-                                                            className="btn"
-                                                            style={{ background: 'var(--success)', border: 'none', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}
-                                                        >
-                                                            ✓
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleReject(leave._id)}
-                                                            className="btn"
-                                                            style={{ background: 'var(--error)', border: 'none', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '4px', cursor: 'pointer' }}
-                                                        >
-                                                            ✗
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                                        Reviewed by {leave.reviewedBy?.name || 'Admin'}
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-
-                {/* Employee Balances */}
-                <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                    <h3>Employee Balances</h3>
-                    <div className="grid grid-3" style={{ marginTop: '1rem' }}>
-                        {balances.map((employee) => (
-                            <div key={employee._id} className="glass-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div>
-                                    <div style={{ fontWeight: 'bold' }}>{employee.name}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{employee.email}</div>
-                                </div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
-                                    {employee.leaveBalance}
-                                </div>
+                                <button
+                                    onClick={() => setFilter('pending')}
+                                    className={`btn btn-sm ${filter === 'pending' ? 'btn-primary' : 'btn-outline'}`}
+                                >
+                                    Pending
+                                </button>
+                                <button
+                                    onClick={() => setFilter('approved')}
+                                    className={`btn btn-sm ${filter === 'approved' ? 'btn-primary' : 'btn-outline'}`}
+                                >
+                                    Approved
+                                </button>
+                                <button
+                                    onClick={() => setFilter('rejected')}
+                                    className={`btn btn-sm ${filter === 'rejected' ? 'btn-primary' : 'btn-outline'}`}
+                                >
+                                    Rejected
+                                </button>
                             </div>
-                        ))}
+                        </div>
+
+                        {leaves.length === 0 ? (
+                            <p style={{ color: 'var(--gray)', textAlign: 'center', padding: '2rem' }}>
+                                No leave requests found
+                            </p>
+                        ) : (
+                            <div className="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Employee</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Days</th>
+                                            <th>Reason</th>
+                                            <th>Balance</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {leaves.map((leave) => (
+                                            <tr key={leave._id}>
+                                                <td>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600 }}>{leave.employeeId?.name}</div>
+                                                        <div style={{ fontSize: '0.875rem', color: 'var(--gray)' }}>
+                                                            {leave.employeeId?.email}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{new Date(leave.startDate).toLocaleDateString()}</td>
+                                                <td>{new Date(leave.endDate).toLocaleDateString()}</td>
+                                                <td>{leave.numberOfDays}</td>
+                                                <td>{leave.reason}</td>
+                                                <td>{leave.employeeId?.leaveBalance || 0} days</td>
+                                                <td>
+                                                    <span className={`badge badge-${leave.status}`}>
+                                                        {leave.status}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {leave.status === 'pending' ? (
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => handleApprove(leave._id)}
+                                                                className="btn btn-success btn-sm"
+                                                            >
+                                                                Approve
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleReject(leave._id)}
+                                                                className="btn btn-danger btn-sm"
+                                                            >
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ color: 'var(--gray)', fontSize: '0.875rem' }}>
+                                                            {leave.reviewedBy?.name}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
-                </div>
+                )}
+
+                {/* ===== ATTENDANCE TAB ===== */}
+                {activeTab === 'attendance' && (
+                    <div className="glass-container mb-4">
+                        <h3>🕐 Today's Attendance ({new Date().toLocaleDateString()})</h3>
+
+                        {todayAttendance.length === 0 ? (
+                            <p style={{ color: 'var(--gray)', textAlign: 'center', padding: '2rem' }}>
+                                No employees have clocked in yet today
+                            </p>
+                        ) : (
+                            <div className="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Employee</th>
+                                            <th>Clock In</th>
+                                            <th>Clock Out</th>
+                                            <th>Total Hours</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {todayAttendance.map((record) => (
+                                            <tr key={record._id}>
+                                                <td>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600 }}>{record.employeeId?.name}</div>
+                                                        <div style={{ fontSize: '0.875rem', color: 'var(--gray)' }}>
+                                                            {record.employeeId?.email}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{formatTime(record.clockIn)}</td>
+                                                <td>{formatTime(record.clockOut)}</td>
+                                                <td>{record.totalHours}h</td>
+                                                <td>
+                                                    <span className={`badge badge-${record.clockOut ? 'approved' : 'pending'}`}>
+                                                        {record.clockOut ? 'Completed' : 'Working'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ===== BALANCES TAB ===== */}
+                {activeTab === 'balances' && (
+                    <div className="glass-container">
+                        <h3>Employee Leave Balances</h3>
+
+                        {balances.length === 0 ? (
+                            <p style={{ color: 'var(--gray)', textAlign: 'center', padding: '2rem' }}>
+                                No employees found
+                            </p>
+                        ) : (
+                            <div className="grid grid-3">
+                                {balances.map((employee) => (
+                                    <div key={employee._id} className="card">
+                                        <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
+                                            {employee.name}
+                                        </div>
+                                        <div style={{ fontSize: '0.875rem', color: 'var(--gray)', marginBottom: '0.5rem' }}>
+                                            {employee.email}
+                                        </div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>
+                                            {employee.leaveBalance} days
+                                        </div>
+                                        <div style={{ fontSize: '0.875rem', color: 'var(--gray)' }}>
+                                            Available leave
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
