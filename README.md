@@ -28,11 +28,13 @@ E-Leave  is a full-stack, professional-grade Leave and Attendance Management Sys
 
 
 🌐 API Endpoints
+
 Auth Route (/api/auth)
 •	POST /register: Register new user
 •	POST /login: Authenticate and receive JWT cookie
 •	GET /logout: Clear JWT cookie
 •	GET /profile: Get logged-in user profile
+
 Leaves Route (/api/leaves)
 •	POST /apply: Apply for leave
 •	GET /my-leaves: Get employee's own requests
