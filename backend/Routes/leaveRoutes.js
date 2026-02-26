@@ -1,22 +1,21 @@
 import express from 'express';
+import { protect } from '../Middleware/roleMiddleware.js';
+import { roleMiddleware } from '../Middleware/roleMiddleware.js';
 import {
-    applyLeave,
-    getMyLeaves,
-    getAllLeaves,
-    approveLeave,
-    rejectLeave
+    applyLeave, getMyLeaves, getAllLeaves,
+    approveLeave, rejectLeave, cancelLeave, getMyLeaveSummary
 } from '../Controllers/leaveController.js';
-import { authMiddleware, employeeMiddleware, managerMiddleware } from '../Middleware/authMiddleware.js';
 
-const leaveRouter = express.Router();
+const router = express.Router();
 
-// Employee routes
-leaveRouter.post("/apply", authMiddleware, employeeMiddleware, applyLeave);
-leaveRouter.get("/my-leaves", authMiddleware, getMyLeaves);
+router.post('/apply', protect, applyLeave);
+router.get('/my-leaves', protect, getMyLeaves);
+router.get('/my-summary', protect, getMyLeaveSummary);
+router.put('/:id/cancel', protect, cancelLeave);
 
-// Manager routes
-leaveRouter.get("/all", authMiddleware, managerMiddleware, getAllLeaves);
-leaveRouter.put("/:id/approve", authMiddleware, managerMiddleware, approveLeave);
-leaveRouter.put("/:id/reject", authMiddleware, managerMiddleware, rejectLeave);
+// Manager/HR routes
+router.get('/all', protect, roleMiddleware(['manager', 'hr']), getAllLeaves);
+router.put('/:id/approve', protect, roleMiddleware(['manager', 'hr']), approveLeave);
+router.put('/:id/reject', protect, roleMiddleware(['manager', 'hr']), rejectLeave);
 
-export default leaveRouter;
+export default router;

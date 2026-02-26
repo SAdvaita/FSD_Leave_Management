@@ -9,7 +9,11 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     const { user, loading } = useAuth();
 
     if (loading) {
-        return <div className="spinner"></div>;
+        return (
+            <div className="spinner-container">
+                <div className="spinner"></div>
+            </div>
+        );
     }
 
     if (!user) {

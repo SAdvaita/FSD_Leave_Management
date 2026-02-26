@@ -1,4 +1,16 @@
 import Attendance from "../Models/Attendance.js";
+import Holiday from "../Models/Holiday.js";
+import User from "../Models/userModel.js";
+import Notification from "../Models/Notification.js";
+
+// Helper: check if a date falls on a public holiday
+const checkIfHoliday = async (date) => {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const holiday = await Holiday.findOne({ date: { $gte: dayStart, $lt: dayEnd } });
+    return holiday;
+};
 
 export const clockIn = async (req, res) => {
     try {
@@ -19,18 +31,29 @@ export const clockIn = async (req, res) => {
             return res.status(400).json({ message: "You have already clocked in today." });
         }
 
+        // Check if today is a public holiday
+        const holiday = await checkIfHoliday(today);
+        const isHolidayWork = !!holiday;
+
         const newAttendance = new Attendance({
             employeeId: userId,
             date: today,
             clockIn: new Date(),
-            status: 'present'
+            status: 'present',
+            isHolidayWork
         });
 
         await newAttendance.save();
 
+        const message = isHolidayWork
+            ? `Clocked in on holiday (${holiday.name}). You will earn 1 CO leave upon clock-out! 🎉`
+            : "Clocked in successfully!";
+
         res.status(201).json({
-            message: "Clocked in successfully!",
-            attendance: newAttendance
+            message,
+            attendance: newAttendance,
+            isHolidayWork,
+            holidayName: holiday?.name || null
         });
 
     } catch (error) {
@@ -68,11 +91,39 @@ export const clockOut = async (req, res) => {
         const hours = diff / (1000 * 60 * 60);
         attendance.totalHours = parseFloat(hours.toFixed(2));
 
+        // ── CO Leave Credit for Holiday Work ──
+        let coLeaveMessage = '';
+        if (attendance.isHolidayWork && !attendance.coLeaveGranted) {
+            // Credit 1 CO leave to the employee
+            const employee = await User.findById(userId);
+            if (employee) {
+                employee.leaveBalances = employee.leaveBalances || {};
+                employee.leaveBalances.CO = (employee.leaveBalances.CO || 0) + 1;
+                employee.markModified('leaveBalances');
+                await employee.save();
+
+                attendance.coLeaveGranted = true;
+                coLeaveMessage = ' 🎉 1 Compensatory Off (CO) leave has been credited to your account for working on a holiday!';
+
+                console.log(`✅ CO leave credited to ${employee.name} for holiday work on ${new Date().toDateString()}`);
+
+                // Notify the employee
+                const holiday = await checkIfHoliday(today);
+                await Notification.create({
+                    userId: employee._id,
+                    title: 'CO Leave Credited! 🎉',
+                    message: `You worked on ${holiday?.name || 'a public holiday'}. 1 Compensatory Off (CO) leave has been added to your balance. New CO balance: ${employee.leaveBalances.CO} days.`,
+                    type: 'general'
+                });
+            }
+        }
+
         await attendance.save();
 
         res.status(200).json({
-            message: "Clocked out successfully!",
-            attendance
+            message: `Clocked out successfully!${coLeaveMessage}`,
+            attendance,
+            coLeaveGranted: attendance.coLeaveGranted
         });
 
     } catch (error) {

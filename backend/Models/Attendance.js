@@ -29,6 +29,14 @@ const attendanceSchema = new mongoose.Schema({
     totalHours: {
         type: Number,
         default: 0
+    },
+    isHolidayWork: {
+        type: Boolean,
+        default: false  // true when employee works on a public holiday
+    },
+    coLeaveGranted: {
+        type: Boolean,
+        default: false  // true once CO leave has been credited for this holiday work
     }
 }, { timestamps: true });
 

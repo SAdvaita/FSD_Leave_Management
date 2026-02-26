@@ -10,6 +10,10 @@ import leaveRouter from './Routes/leaveRoutes.js';
 import balanceRouter from './Routes/balanceRoutes.js';
 import attendanceRouter from './Routes/attendanceRoutes.js';
 import profileRouter from './Routes/profileRoutes.js';
+import holidayRouter from './Routes/holidayRoutes.js';
+import notificationRouter from './Routes/notificationRoutes.js';
+import reportRouter from './Routes/reportRoutes.js';
+import salaryRouter from './Routes/salaryRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -34,8 +38,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.get("/", (req, res) => {
     res.status(200).json({
-        message: "Leave Management System API",
-        version: "1.0.0",
+        message: "ETime Leave Management System API",
+        version: "2.0.0",
         status: "running"
     });
 });
@@ -45,6 +49,10 @@ app.use("/api/leaves", leaveRouter);
 app.use("/api/balance", balanceRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/profile", profileRouter);
+app.use("/api/holidays", holidayRouter);
+app.use("/api/notifications", notificationRouter);
+app.use("/api/reports", reportRouter);
+app.use("/api/salary", salaryRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -60,4 +68,5 @@ app.listen(PORT, () => {
     connectDB();
     console.log(`🚀 Server is running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🏢 ETime Leave Management System v2.0`);
 });
