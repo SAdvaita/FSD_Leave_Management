@@ -78,5 +78,5 @@ Balance & Reports (/api/balance, /api/reports)
 🔗 Live Deployment Links
 Currently, the project is configured for your local development environment with the following local endpoints:
 •	Frontend App: http://localhost:5174
-•	Backend API: http://localhost:8081
+•	Backend API: https://fsd-leave-management.onrender.com/
 
