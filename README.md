@@ -43,26 +43,32 @@ Leaves Route (/api/leaves)
 •	GET /all: Admin fetch all leave requests
 •	PUT /:id/approve: Admin approve leave
 •	PUT /:id/reject: Admin reject leave (requires reason body)
+
 Holidays Route (/api/holidays)
 •	GET /: Fetch all holidays
 •	POST /: Add a custom holiday
 •	POST /seed: Seed standard array of default holidays
 •	DELETE /:id: Remove a holiday
+
 Attendance Route (/api/attendance)
 •	POST /clock-in: Create new attendance record for the day
 •	POST /clock-out: Update attendance record with end time/hours
 •	GET /status: Check today's clock-in status
 •	GET /my-history: Get logged-in user's past attendance
 •	GET /all: Admin fetch all employee attendances for today
+
 Notifications Route (/api/notifications)
 •	GET /: Fetch user's notifications
 •	PUT /mark-all-read: Mark all as read
 •	PUT /:id/read: Mark specific ID as read
 •	DELETE /:id: Clear a notification
+
 Balance & Reports (/api/balance, /api/reports)
 •	GET /balance/my-balance: Get detailed per-type balance
 •	POST /balance/adjust: Admin adjust employee balance
 •	GET /reports/overview: Get aggregated chart data (distribution, trends)
+
+
 🗄️ Database Schema (Key Collections)
 1.	Users Collection: Extends standard Auth fields (name, email, password, role) with employee-centric fields like designation, department, employeeId, profilePicture, gender, monthlySalary, and an object holding all 9 leaveBalances.
 2.	Leaves Collection: Tracks employeeId (foreign key), leaveType, startDate, endDate, isHalfDay, auto-calculated numberOfDays, reason, status (pending/approved/rejected/cancelled), rejectionReason, and action timestamps.
